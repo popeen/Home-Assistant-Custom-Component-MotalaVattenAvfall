@@ -1,5 +1,6 @@
 {
   "name": "Motala Vatten & Avfall - Garbage collection sensor",
+  "render_readme": true,
   "zip_release": true,
   "filename": "motalavattenavfall.zip"
 }
