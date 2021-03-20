@@ -4,6 +4,7 @@
 ![Project Stage][project-stage-shield]
 [![issues-shield]](issues)
 [![License][license-shield]](LICENSE.md)
+
 [![Buy me a coffee][buymeacoffee-shield]][buymeacoffee]
 
 A sensor for getting collection date for garbage and sludge from Motala Vatten & Avfall.
