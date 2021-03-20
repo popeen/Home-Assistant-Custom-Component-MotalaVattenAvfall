@@ -1,4 +1,4 @@
-## Home Assistant addon for Motala Vatten & Avfall
+## Home Assistant Custom Component: Motala Vatten & Avfall
 
 [![GitHub Release][releases-shield]][releases]
 ![Project Stage][project-stage-shield]
