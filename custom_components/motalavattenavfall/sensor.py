@@ -86,24 +86,22 @@ class VattenAvfallSensor(Entity):
 
     def get_vatten_avfall_data(self):
         """This is the data we are after, it contains information about your address as well as when garbage and sludge will be collected"""
-        garbage = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/list", headers={
-            'Host': 'motala.avfallsapp.se',
-            'x-app-identifier': self._identifier,
-            'content-type': 'application/json; charset=utf-8',
-            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
-        }).json()[0]['bins']
-
-        sludge = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/list", headers={
-            'Host': 'motala.avfallsapp.se',
-            'x-app-identifier': self._identifier,
-            'content-type': 'application/json; charset=utf-8',
-            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
-        }).json()[0]['bins']
-
-        for tank in sludge:
-            garbage.append(tank)
-
-        return garbage
+        
+        if self._type == "Slam":
+            return requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/list", headers={
+                'Host': 'motala.avfallsapp.se',
+                'x-app-identifier': self._identifier,
+                'content-type': 'application/json; charset=utf-8',
+                'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+            }).json()[0]['bins']
+        
+        else:
+            return requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/list", headers={
+                'Host': 'motala.avfallsapp.se',
+                'x-app-identifier': self._identifier,
+                'content-type': 'application/json; charset=utf-8',
+                'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+            }).json()[0]['bins']
 
     def get_plant_id_from_address(self, address):
         """plant_id is an internal id used by the app, it is unique for every address"""
@@ -115,7 +113,7 @@ class VattenAvfallSensor(Entity):
             'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
         })
 
-        return data.json()['V'][0]['plant_number']
+        return data.json()[(address[:1])][0]['plant_number']
 
 
     def register_new_device(self):
@@ -171,7 +169,8 @@ class VattenAvfallSensor(Entity):
 
         
         for item in data:
-            if self._type in item['type']:
-                return item['pickup_date']
+            if self._address in item['address']:
+                if self._type in item['type']:
+                    return item['pickup_date']
         
         return None
