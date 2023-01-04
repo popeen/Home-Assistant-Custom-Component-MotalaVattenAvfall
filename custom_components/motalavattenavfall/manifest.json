@@ -1,9 +1,9 @@
 {
   "domain": "motalavattenavfall",
   "name": "Motala Vatten & Avfall",
-  "documentation": "https://github.com/popeen/Home-Assistant-Addon-MotalaVattenAvfall",
-  "dependencies": [],
+  "documentation": "https://github.com/popeen/Home-Assistant-Addon-MotalaVattenAvfall",  
+  "issue_tracker": "https://github.com/popeen/Home-Assistant-Addon-MotalaVattenAvfall/issues",
+  "iot_class": "assumed_state",
   "codeowners": ["@popeen"],
-  "requirements": [],
   "version": "0.1.1"
 }
