@@ -88,14 +88,14 @@ class VattenAvfallSensor(Entity):
         """This is the data we are after, it contains information about your address as well as when garbage and sludge will be collected"""
         garbage = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/list", headers={
             'Host': 'motala.avfallsapp.se',
-            'x-app-identifier': '2accd417d4b4c3ef',
+            'x-app-identifier': self._identifier,
             'content-type': 'application/json; charset=utf-8',
             'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
         }).json()[0]['bins']
 
         sludge = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/list", headers={
             'Host': 'motala.avfallsapp.se',
-            'x-app-identifier': '2accd417d4b4c3ef',
+            'x-app-identifier': self._identifier,
             'content-type': 'application/json; charset=utf-8',
             'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
         }).json()[0]['bins']
