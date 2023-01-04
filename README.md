@@ -16,7 +16,7 @@ If you have multiple garbage cans in the app you need to set up one sensor for e
 |Parameter| What to put |
 |--|--|
 | Name | This is the name you want for the sensor in Home Assistant |
-| Address | Your home address |
+| Address | Your home address, use the search function in the app (Vatten & Avfall) to find a search string that only returns your house |
 | Type | This is the "type" name you see in the app. You will probably have something similar to the examples |
 
 
@@ -24,13 +24,7 @@ If you have multiple garbage cans in the app you need to set up one sensor for e
 - platform: motalavattenavfall
   name: "Garbage collection date"
   address: "My address"
-  type: "Tunna 1"
-```
-```
-- platform: motalavattenavfall
-  name: "Garbage collection date"
-  address: "My address"
-  type: "Hushållsavfall"
+  type: "Kärl 1"
 ```
 ```  
 - platform: motalavattenavfall

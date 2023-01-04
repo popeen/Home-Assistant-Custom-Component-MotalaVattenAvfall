@@ -1,6 +1,7 @@
 """Platform for sensor integration."""
-import urllib.request, json, asyncio, hashlib
+import urllib.request, json, asyncio, hashlib, requests
 from datetime import timedelta
+from urllib import request
 
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
@@ -28,14 +29,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+def setup_platform(hass, config, add_entities, discovery_info=None) -> None:
     """Set up the Motala Vatten & Avfall sensor platform."""
 
     sensor_name = config[CONF_NAME]
     sensor_type = config[CONF_TYPE]
     sensor_address = config[CONF_ADDRESS]
 
-    async_add_entities([VattenAvfallSensor(sensor_name, sensor_type, sensor_address)])
+    add_entities([VattenAvfallSensor(sensor_name, sensor_type, sensor_address)])
 
 
 class VattenAvfallSensor(Entity):
@@ -43,15 +44,23 @@ class VattenAvfallSensor(Entity):
 
     def __init__(self, sensor_name, sensor_type, sensor_address):
         """Initialize the sensor."""
+        
         self._name = sensor_name
         self._type = sensor_type
         self._address = sensor_address
+
+        self._identifier = str(self.generate_device_id_from_address(self._address))
+
+        self.register_new_device()
+        plant_id = self.get_plant_id_from_address(self._address)
+        self.save_address(plant_id)
+
         self._state = self.get_vatten_avfall_collection_date()
         if self._type == "Slam":
             self._icon = "mdi:water"
         else:
             self._icon = "mdi:delete"
-
+        
     @property
     def name(self):
         """Return the name of the sensor."""
@@ -68,186 +77,101 @@ class VattenAvfallSensor(Entity):
         return self._icon
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    async def async_update(self):
+    def update(self) -> None:
         """Get the latest data and updates the states."""
-        try:
-            self._state = self.get_vatten_avfall_collection_date()
-        except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as error:
-            _LOGGER.error("Could not fetch data: %s", error)
+        self._state = self.get_vatten_avfall_collection_date()
 
     def generate_device_id_from_address(self, address):
-        return "hass" + hashlib.md5(address.encode()).hexdigest()[:12]
+        return hashlib.md5(("7815696ecbf1c96e6894b779456d330e"+address).encode()).hexdigest()[:16]
 
-    def get_vatten_avfall_data(self, identifier):
+    def get_vatten_avfall_data(self):
         """This is the data we are after, it contains information about your address as well as when garbage and sludge will be collected"""
-        req = urllib.request.Request(
-            "https://motala.avfallsappen.se/wp-json/app/v1/next-pickup",
-            data=None,
-            headers={
-                'pragma': 'no-cache',
-                'User-Agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall',
-                'Accept': 'application/json, text/plain, */*',
-                'cache-control': 'no-cache',
-                'x-app-language': 'sv',
-                'x-app-identifier': identifier,
-                'x-requested-with': 'se.motala.avfallsapp',
-                'sec-fetch-site': 'cross-site',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-dest': 'empty',
-                'accept-encoding': 'deflate',
-                'accept-language': 'en-US,en;q=0.9,sv-SE;q=0.8,sv;q=0.7',
-            }
-        )
-        with urllib.request.urlopen(req) as url:
-            data = json.loads(url.read().decode())
-        return data
+        garbage = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/list", headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-identifier': '2accd417d4b4c3ef',
+            'content-type': 'application/json; charset=utf-8',
+            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+        }).json()[0]['bins']
 
-    def get_plant_id_from_address(self, identifier, address):
+        sludge = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/list", headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-identifier': '2accd417d4b4c3ef',
+            'content-type': 'application/json; charset=utf-8',
+            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+        }).json()[0]['bins']
+
+        for tank in sludge:
+            garbage.append(tank)
+
+        return garbage
+
+    def get_plant_id_from_address(self, address):
         """plant_id is an internal id used by the app, it is unique for every address"""
-        req = urllib.request.Request(
-            "https://motala.avfallsappen.se/wp-json/app/v1/address-flat?" + urllib.parse.urlencode({'address': address}),
-            data=None,
-            headers={
-                'Host': 'motala.avfallsappen.se',
-                'pragma': 'no-cache',
-                'Accept': 'application/json, text/plain, */*',
-                'cache-control': 'no-cache',
-                'x-app-language': 'sv',
-                'x-app-identifier': identifier,
-                'User-Agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall',
-                'x-requested-with': 'se.motala.avfallsapp',
-                'sec-fetch-site': 'cross-site',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-dest': 'empty',
-                'accept-encoding': 'deflate',
-                'accept-language': 'en-US,en;q=0.9,sv-SE;q=0.8,sv;q=0.7',
-            }
-        )
+        data = requests.get(url="https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/search?" + (urllib.parse.urlencode({'address': address}).replace("+", "%2520")), headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-token': 'undefined',
+            'x-app-identifier': self._identifier,
+            'content-type': 'application/json; charset=utf-8',
+            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+        })
+
+        return data.json()['V'][0]['plant_number']
 
 
-        with urllib.request.urlopen(req) as url:
-            data = json.loads(url.read().decode())
-        return data[1]['plant_number']
-
-
-    def register_new_device(self, identifier):
-        req = urllib.request.Request(
-            "https://motala.avfallsappen.se/wp-json/app/v1/register",
-            data= json.dumps({
-                'identifier': identifier,
+    def register_new_device(self):
+        requests.post(url='https://motala.avfallsapp.se/wp-json/nova/v1/register', headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-token': 'undefined',
+            'x-app-identifier': self._identifier,
+            'content-type': 'application/json; charset=utf-8',
+            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+        }, json={
+                'identifier': self._identifier,
+                'uuid': self._identifier,
                 'platform': 'android',
-                'test_token': 0
-            }).encode("utf8"),
-            headers={
-                'Host': 'motala.avfallsappen.se',
-                'pragma': 'no-cache',
-                'Accept': 'application/json, text/plain, */*',
-                'cache-control': 'no-cache',
-                'x-app-language': 'sv',
-                'x-app-identifier': identifier,
-                'x-app-version': '1.4.1',
-                'User-Agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall',
-                'x-requested-with': 'se.motala.avfallsapp',
-                'sec-fetch-site': 'cross-site',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-dest': 'empty',
-                'accept-encoding': 'deflate',
-                'accept-language': 'en-US,en;q=0.9,sv-SE;q=0.8,sv;q=0.7',
-                'content-type': 'application/json;charset=UTF-8'
-            },
-            method='POST'
-        )
-        with urllib.request.urlopen(req) as url:
-            data = json.loads(url.read().decode())
-        return data
+                'version': '3.0.3.0',
+                'os_version': '13',
+                'model': 'IN2023',
+                'test': False
+            })
 
 
-    def save_address(self, identifier, plant_id):
+    def save_address(self, plant_id):
         """Saves the given plant_id to the account. The plant_id is a unique ID based on the address.
-        It can be fetched with getVattenAvfall_PlantID(identifier)"""
-        req = urllib.request.Request(
-            "https://motala.avfallsappen.se/wp-json/app/v1/save-address",
-            data= json.dumps({
+        It can be fetched with getVattenAvfall_PlantID(identifier)"""        
+        requests.post(url='https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/set-status', headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-token': 'undefined',
+            'x-app-identifier': self._identifier,
+            'content-type': 'application/json; charset=utf-8',
+            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+        }, json={
                 'plant_id': plant_id,
-                'notification_enabled': True,
-            }).encode("utf8"),
-            headers={
-                'Host': 'motala.avfallsappen.se',
-                'pragma': 'no-cache',
-                'Accept': 'application/json, text/plain, */*',
-                'cache-control': 'no-cache',
-                'x-app-language': 'sv',
-                'x-app-identifier': identifier,
-                'User-Agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall',
-                'x-requested-with': 'se.motala.avfallsapp',
-                'sec-fetch-site': 'cross-site',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-dest': 'empty',
-                'accept-encoding': 'deflate',
-                'accept-language': 'en-US,en;q=0.9,sv-SE;q=0.8,sv;q=0.7',
-                'content-type': 'application/json;charset=UTF-8'
-            },
-            method='POST'
-        )
-        urllib.request.urlopen(req)
-        req = urllib.request.Request(
-            "https://motala.avfallsappen.se/wp-json/app/v1/save-address-sludge",
-            data=json.dumps({
-                'plant_id': plant_id,
-                'notification_enabled': True,
-            }).encode("utf8"),
-            headers={
-                'Host': 'motala.avfallsappen.se',
-                'pragma': 'no-cache',
-                'Accept': 'application/json, text/plain, */*',
-                'cache-control': 'no-cache',
-                'x-app-language': 'sv',
-                'x-app-identifier': identifier,
-                'User-Agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall',
-                'x-requested-with': 'se.motala.avfallsapp',
-                'sec-fetch-site': 'cross-site',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-dest': 'empty',
-                'accept-encoding': 'deflate',
-                'accept-language': 'en-US,en;q=0.9,sv-SE;q=0.8,sv;q=0.7',
-                'content-type': 'application/json;charset=UTF-8'
-            },
-            method='POST'
-        )
-        urllib.request.urlopen(req)
+                'address_enabled': True,
+                'notification_enabled': False,
+            })
 
-    def is_address_saved(self, data, address):
-        """Check if the specified address is in the data."""
-        isSaved = False
-        try:
-            for item in data:
-                if address in item['address']:
-                    isSaved = True
-                    break
-        except:
-            #This happens on newly registered accounts where no address exist, just ignore it as isSaved is already set to False
-            pass
-        return isSaved
+        requests.post(url='https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/set-status', headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-token': 'undefined',
+            'x-app-identifier': self._identifier,
+            'content-type': 'application/json; charset=utf-8',
+            'user-agent': 'www.Home-Assistant.io - Add-On for Motala Vatten & Avfall'
+        }, json={
+                'plant_id': plant_id,
+                'address_enabled': True,
+                'notification_enabled': False,
+            })
 
 
     def get_vatten_avfall_collection_date(self):
-        identifier = self.generate_device_id_from_address(self._address)
 
         # Get data
-        data = self.get_vatten_avfall_data(identifier)
+        data = self.get_vatten_avfall_data()
 
-        # if the address is not in data, add it to the account and get data again. Since we always add it the first time we assume we also need to register the account
-        if not self.is_address_saved(data, self._address):
-            self.register_new_device(identifier)
-            plant_id = self.get_plant_id_from_address(identifier, self._address)
-            self.save_address(identifier, plant_id)
-            data = self.get_vatten_avfall_data(identifier)
-
-        for data2 in data:
-            if self._address in data2['address']:
-                for data3 in data2['types']:
-                    if self._type in data3['type']:
-                        return data3['pickup_date']
-                        break
-                break
+        
+        for item in data:
+            if self._type in item['type']:
+                return item['pickup_date']
+        
         return None
