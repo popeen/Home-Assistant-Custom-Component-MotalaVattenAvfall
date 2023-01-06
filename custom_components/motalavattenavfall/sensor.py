@@ -14,6 +14,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
+DOMAIN = "motalavattenavfall"
+
 CONF_TYPE = "type"
 CONF_ADDRESS = "address"
 
@@ -45,6 +47,7 @@ class VattenAvfallSensor(Entity):
     def __init__(self, sensor_name, sensor_type, sensor_address):
         """Initialize the sensor."""
         
+        self._attr_unique_id = f"{DOMAIN}_{sensor_address}_{sensor_type}"
         self._name = sensor_name
         self._type = sensor_type
         self._address = sensor_address
@@ -82,7 +85,7 @@ class VattenAvfallSensor(Entity):
         self._state = self.get_vatten_avfall_collection_date()
 
     def generate_device_id_from_address(self, address):
-        return hashlib.md5(("7815696ecbf1c96e6894b779456d330e"+address).encode()).hexdigest()[:16]
+        return (hashlib.md5(("7815696ecbf1c96e6894b779456d330e"+address).encode()).hexdigest()[:16])
 
     def get_vatten_avfall_data(self):
         """This is the data we are after, it contains information about your address as well as when garbage and sludge will be collected"""
