@@ -36,8 +36,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     #Register HA as a device and save the address to the account
     #TODO, This should only be done the first time
     device_id = generate_device_id_from_address(address)
-    await register_new_device(session, device_id)
-    plant_id = await get_plant_id_from_address(session, address,device_id)
+    plant_id = await get_plant_id_from_address(session, address, device_id)
     await save_address(session, plant_id, device_id)
     data = await get_vatten_avfall_data(session, device_id)
 
@@ -51,26 +50,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 def generate_device_id_from_address(address):
     return (hashlib.md5(("7815696ecbf1c96e6894b779456d330e"+address).encode()).hexdigest()[:16])
-
-
-async def register_new_device(session, device_id):
-    url = "https://motala.avfallsapp.se/wp-json/nova/v1/register"
-    async with session.post(url, headers={
-    'Host': 'motala.avfallsapp.se',
-    'x-app-token': 'undefined',
-    'x-app-identifier': device_id,
-    'content-type': 'application/json; charset=utf-8'
-}, json={
-        'identifier': device_id,
-        'uuid': device_id,
-        'platform': 'android',
-        'version': '3.0.3.0',
-        'os_version': '13',
-        'model': 'HomeAssistant',
-        'test': False
-    }) as resp:
-        data = await resp.json()
-        return data
 
 
 async def get_plant_id_from_address(session, address, device_id):
@@ -124,7 +103,8 @@ async def get_vatten_avfall_data(session, device_id):
         'content-type': 'application/json; charset=utf-8'
     }) as resp:
         data = await resp.json()
-        pickup += data[0]['bins']
+        if len(data) > 0:
+            pickup += data[0]['bins']
     url = "https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/list"
     async with session.get(url, headers={
         'Host': 'motala.avfallsapp.se',
@@ -133,7 +113,8 @@ async def get_vatten_avfall_data(session, device_id):
         'content-type': 'application/json; charset=utf-8'
     }) as resp:
         data = await resp.json()
-        pickup += data[0]['bins']
+        if len(data) > 0:
+            pickup += data[0]['bins']
 
     return pickup
 
