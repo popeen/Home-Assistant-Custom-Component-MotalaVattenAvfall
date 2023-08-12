@@ -162,12 +162,9 @@ class VattenAvfallSensor(Entity):
         session = async_get_clientsession(self.hass)
         # Get data
         data = await get_vatten_avfall_data(session, self._device_id)
-
         
         for item in data:
-            if self._address in item['address']:
-                if self._type in item['type']:
-                    return item['pickup_date']
-        
+            if self._attr_unique_id == item['service_id']:                
+                return item['pickup_date']
         return None
     
