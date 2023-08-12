@@ -2,11 +2,11 @@
     "config": {
         "error": {
             "unknown": "Unknown error",
-            "invalid_address": "The address was not found on Motala Vatten & Avfall. Try doing a search in the app until you find a search that works and returns only your address, then use that one."
+            "invalid_address": "The address was not found on Motala Vatten & Avfall.\n\nUse the search function in the Vatten & Avfall app to find a search string that only returns your house and then use that."
         },
         "step": {
             "user": {
-				"description": "Enter only your street address, for example Hassvägen 8123",
+				"description": "Enter only your street address, for example Hassvägen 8123.\n\nUse the search function in the Vatten & Avfall app to find a search string that only returns your house and then use that if you are having trouble.",
                 "data": {
                     "address": "Address"
                 }
