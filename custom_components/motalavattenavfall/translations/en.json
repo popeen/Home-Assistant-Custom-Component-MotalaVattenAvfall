@@ -1,0 +1,12 @@
+{
+    "config": {
+        "step": {
+            "user": {
+				"description": "Enter only your street address, for example Hassvägen 8123",
+                "data": {
+                    "address": "Address"
+                }
+            }
+        }
+   }
+}
