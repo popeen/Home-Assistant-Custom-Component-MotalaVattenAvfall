@@ -9,29 +9,18 @@
 
 [![Buy me a coffee][buymeacoffee-shield]][buymeacoffee]
 
-A sensor for getting collection date for garbage and sludge from Motala Vatten & Avfall.
-If you have multiple garbage cans in the app you need to set up one sensor for each.
+A sensor for getting collection date and related data for garbage and sludge from Motala Vatten & Avfall.
 
 
-|Parameter| What to put |
-|--|--|
-| Name | This is the name you want for the sensor in Home Assistant |
-| Address | Your home address, use the search function in the app (Vatten & Avfall) to find a search string that only returns your house |
-| Type | This is the "type" name you see in the app. You will probably have something similar to the examples |
+After installing the integration using HACS and restarting your server you simply add it by clicking the button below or by going to Devices & Services and adding it from there.
+
+[![add-integration-shield]][add-integration]
+
+**Troubleshooting:**
+
+If you are having trouble with getting the correct address use the search function in the Vatten & Avfall app ([Android](https://play.google.com/store/apps/details?id=se.motala.avfallsapp)/[iOS](https://itunes.apple.com/se/app/motala-kommun-vatten-avfall/id1446574786)) to find a search string that only returns your house and then use that.
 
 
-```
-- platform: motalavattenavfall
-  name: "Garbage collection date"
-  address: "My address"
-  type: "Kärl 1"
-```
-```  
-- platform: motalavattenavfall
-  name: "Sludge collection date"
-  address: "My address"
-  type: "Slam"
-```  
 [releases-shield]: https://img.shields.io/github/release/popeen/Home-Assistant-Addon-MotalaVattenAvfall.svg
 [releases]: https://github.com/popeen/Home-Assistant-Addon-MotalaVattenAvfall/releases
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-ready%20for%20use-green.svg
@@ -41,3 +30,6 @@ If you have multiple garbage cans in the app you need to set up one sensor for e
 [hacs]: https://github.com/custom-components/hacs
 [buymeacoffee-shield]: https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-2.svg
 [buymeacoffee]: https://www.buymeacoffee.com/popeen
+[add-integration-shield]: https://my.home-assistant.io/badges/config_flow_start.svg
+[add-integration]: https://my.home-assistant.io/redirect/config_flow_start/?domain=motalavattenavfall
+
