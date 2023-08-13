@@ -19,7 +19,6 @@ DATA_SCHEMA = vol.Schema(
 
 async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     """Validate the user input."""
-    #TODO, Add validation
     address = data[common.CONF_ADDRESS]
 
     session = async_get_clientsession(hass)
