@@ -45,53 +45,37 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 async def save_address(session, plant_id, device_id):
     """Saves the given plant_id to the account. The plant_id is a unique ID based on the address.
     It can be fetched with getVattenAvfall_PlantID(identifier)"""
-    url = "https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/set-status"
-    await session.post(url, headers={
-        'Host': 'motala.avfallsapp.se',
-        'x-app-token': 'undefined',
-        'x-app-identifier': device_id,
-        'content-type': 'application/json; charset=utf-8'
-    }, json={
-            'plant_id': plant_id,
-            'address_enabled': True,
-            'notification_enabled': False,
-    })
-    url = "https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/set-status"
-    await session.post(url, headers={
-        'Host': 'motala.avfallsapp.se',
-        'x-app-token': 'undefined',
-        'x-app-identifier': device_id,
-        'content-type': 'application/json; charset=utf-8'
-    }, json={
-            'plant_id': plant_id,
-            'address_enabled': True,
-            'notification_enabled': False,
-    })
-
+    
+    types = ['next-pickup', 'sludge-suction']
+    for type in types:
+        url = "https://motala.avfallsapp.se/wp-json/nova/v1/" + type + "/set-status"
+        await session.post(url, headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-token': 'undefined',
+            'x-app-identifier': device_id,
+            'content-type': 'application/json; charset=utf-8'
+        }, json={
+                'plant_id': plant_id,
+                'address_enabled': True,
+                'notification_enabled': False,
+        })
 
 async def get_vatten_avfall_data(session, device_id):
     """This is the data we are after, it contains information about your address as well as when garbage and sludge will be collected"""
+    
     pickup = []
-    url = "https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/list"
-    async with session.get(url, headers={
-        'Host': 'motala.avfallsapp.se',
-        'x-app-token': 'undefined',
-        'x-app-identifier': device_id,
-        'content-type': 'application/json; charset=utf-8'
-    }) as resp:
-        data = await resp.json()
-        if len(data) > 0:
-            pickup += data[0]['bins']
-    url = "https://motala.avfallsapp.se/wp-json/nova/v1/sludge-suction/list"
-    async with session.get(url, headers={
-        'Host': 'motala.avfallsapp.se',
-        'x-app-token': 'undefined',
-        'x-app-identifier': device_id,
-        'content-type': 'application/json; charset=utf-8'
-    }) as resp:
-        data = await resp.json()
-        if len(data) > 0:
-            pickup += data[0]['bins']
+    types = ['next-pickup', 'sludge-suction']
+    for type in types:
+        url = "https://motala.avfallsapp.se/wp-json/nova/v1/" + type + "/list"
+        async with session.get(url, headers={
+            'Host': 'motala.avfallsapp.se',
+            'x-app-token': 'undefined',
+            'x-app-identifier': device_id,
+            'content-type': 'application/json; charset=utf-8'
+        }) as resp:
+            data = await resp.json()
+            if len(data) > 0:
+                pickup += data[0]['bins']
 
     return pickup
 
@@ -99,18 +83,15 @@ async def get_vatten_avfall_data(session, device_id):
 class VattenAvfallSensor(Entity):
     """Representation of a Sensor."""
 
-    def __init__(self, sensor_type, sensor_address, identifier, device_id):
-        """Initialize the sensor."""
+    def __init__(self, sensor_type, address, identifier, device_id):
+        """Initialize the sensor."""        
+        self.device_id = device_id
 
         self._attr_unique_id = identifier
-        self._device_id = device_id
-        self._name = sensor_address + " " + sensor_type
-        self._type = sensor_type
-        self._address = sensor_address
+        self._name = address + " " + sensor_type
         self._state = None
-        self._extra = {}
 
-        if self._type == "Slam":
+        if sensor_type == "Slam":
             self._icon = "mdi:water"
         else:
             self._icon = "mdi:delete"
@@ -124,16 +105,7 @@ class VattenAvfallSensor(Entity):
     def state(self):
         """Return the state of the sensor."""
         return self._state
-    
-    @property
-    def extra_state_attributes(self):
-        """Get the extra attributes"""
-        #Make sure it has been set
-        attributes = self._extra
-        if hasattr(self, "add_state_attributes"):
-            attributes = {**attributes, **self.add_state_attributes}
-        return attributes
-    
+        
     @property
     def icon(self):
         """Icon to use in the frontend."""
@@ -144,10 +116,10 @@ class VattenAvfallSensor(Entity):
         """Get the latest data and updates the states."""
         session = async_get_clientsession(self.hass)
         # Get all data
-        data = await get_vatten_avfall_data(session, self._device_id)
+        data = await get_vatten_avfall_data(session, self.device_id)
         # Only use the data for the specific sensor
         for item in data:
             if self._attr_unique_id == item['service_id']:
                 self._state = item['pickup_date']
-                self._extra = item
+                self._attr_extra_state_attributes = item
         return None
