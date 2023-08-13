@@ -131,6 +131,7 @@ class VattenAvfallSensor(Entity):
         self._type = sensor_type
         self._address = sensor_address
         self._state = None
+        self._extra = {}
 
         if self._type == "Slam":
             self._icon = "mdi:water"
@@ -146,7 +147,15 @@ class VattenAvfallSensor(Entity):
     def state(self):
         """Return the state of the sensor."""
         return self._state
-
+    
+    @property
+    def extra_state_attributes(self):
+        #Make sure it has been set
+        attributes = self._extra
+        if hasattr(self, "add_state_attributes"):
+            attributes = {**attributes, **self.add_state_attributes}
+        return attributes
+    
     @property
     def icon(self):
         """Icon to use in the frontend."""
@@ -155,16 +164,11 @@ class VattenAvfallSensor(Entity):
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
-        self._state = await self.get_vatten_avfall_collection_date()
-
-    async def get_vatten_avfall_collection_date(self):
-        
         session = async_get_clientsession(self.hass)
         # Get data
         data = await get_vatten_avfall_data(session, self._device_id)
-        
         for item in data:
-            if self._attr_unique_id == item['service_id']:                
-                return item['pickup_date']
+            if self._attr_unique_id == item['service_id']:
+                self._state = item['pickup_date']
+                self._extra = item
         return None
-    
