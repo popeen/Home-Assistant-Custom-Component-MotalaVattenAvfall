@@ -1,42 +1,36 @@
-"""Platform for sensor integration."""
-import urllib.request, json, asyncio, hashlib, requests
+from __future__ import annotations
+from . import common
 from datetime import timedelta
 from urllib import request
 
+import urllib.request, json, asyncio
 import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import (
-    CONF_NAME
-)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import Entity
 from homeassistant.util import Throttle
 
-DOMAIN = "motalavattenavfall"
-
-CONF_ADDRESS = "address"
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=60)
-
 SCAN_INTERVAL = timedelta(minutes=30)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Required(CONF_ADDRESS): cv.string
+        vol.Required(common.CONF_ADDRESS): cv.string
     }
 )
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     session = async_get_clientsession(hass)
-    address = hass.data[DOMAIN][config_entry.entry_id]
+    address = hass.data[common.DOMAIN][config_entry.entry_id]
     
     #Register HA as a device and save the address to the account
     #TODO, This should only be done the first time
-    device_id = generate_device_id_from_address(address)
-    plant_id = await get_plant_id_from_address(session, address, device_id)
+    device_id = common.generate_device_id_from_address(address)
+    plant_id = await common.get_plant_id_from_address(session, address, device_id)
     await save_address(session, plant_id, device_id)
     data = await get_vatten_avfall_data(session, device_id)
 
@@ -46,23 +40,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         entities.append(VattenAvfallSensor(sensor['type'], sensor['address'], sensor['service_id'], device_id))
 
     async_add_entities(entities, update_before_add=True)
-
-
-def generate_device_id_from_address(address):
-    return (hashlib.md5(("7815696ecbf1c96e6894b779456d330e"+address).encode()).hexdigest()[:16])
-
-
-async def get_plant_id_from_address(session, address, device_id):
-    """plant_id is an internal id used by the app, it is unique for every address"""
-    url = "https://motala.avfallsapp.se/wp-json/nova/v1/next-pickup/search?" + (urllib.parse.urlencode({'address': address}).replace("+", "%2520"))
-    async with session.get(url, headers={
-    'Host': 'motala.avfallsapp.se',
-    'x-app-token': 'undefined',
-    'x-app-identifier': device_id,
-    'content-type': 'application/json; charset=utf-8'
-}) as resp:
-        data = await resp.json()
-        return data[(address[:1])][0]['plant_number']
 
 
 async def save_address(session, plant_id, device_id):
@@ -150,6 +127,7 @@ class VattenAvfallSensor(Entity):
     
     @property
     def extra_state_attributes(self):
+        """Get the extra attributes"""
         #Make sure it has been set
         attributes = self._extra
         if hasattr(self, "add_state_attributes"):
@@ -165,8 +143,9 @@ class VattenAvfallSensor(Entity):
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
         session = async_get_clientsession(self.hass)
-        # Get data
+        # Get all data
         data = await get_vatten_avfall_data(session, self._device_id)
+        # Only use the data for the specific sensor
         for item in data:
             if self._attr_unique_id == item['service_id']:
                 self._state = item['pickup_date']
