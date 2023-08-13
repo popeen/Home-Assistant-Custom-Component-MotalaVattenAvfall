@@ -25,7 +25,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     session = async_get_clientsession(hass)
     
     try:
-        device_id = common.common.generate_device_id_from_address(address)
+        device_id = common.generate_device_id_from_address(address)
         await common.register_new_device(session, device_id)
         await common.get_plant_id_from_address(session, address,device_id)
     except Exception:
